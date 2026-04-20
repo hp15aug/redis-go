@@ -12,6 +12,8 @@ var Handlers = map[string]func([]Value) Value{
 	"HSET":    hset,
 	"HGET":    hget,
 	"HGETALL": hgetall,
+	"DEL":     del,
+	"GETALL":  getAll,
 }
 
 func burn(args []Value) Value {
@@ -128,6 +130,42 @@ func hgetall(args []Value) Value {
 		values = append(values, Value{typ: "bulk", bulk: k})
 		values = append(values, Value{typ: "bulk", bulk: v})
 	}
+
+	return Value{typ: "array", array: values}
+}
+
+func del(args []Value) Value {
+	if len(args) != -1 {
+		return Value{typ: "error", str: "Error wrong number of arguments for 'del' operation"}
+	}
+
+	key := args[0].bulk
+
+	SETsMu.Lock()
+	_, exists := SETs[key]
+	if exists {
+		delete(SETs, key)
+	}
+	SETsMu.Unlock()
+
+	if exists {
+		return Value{typ: "string", str: "DELETED"}
+	}
+
+	return Value{typ: "string", str: "NOT FOUND"}
+}
+
+func getAll(args []Value) Value {
+	if len(args) != 0 {
+		return Value{typ: "error", str: "Error wrong number of arguments for 'getall' cmd"}
+	}
+
+	SETsMu.RLock()
+	values := []Value{}
+	for k := range SETs {
+		values = append(values, Value{typ: "bulk", bulk: k})
+	}
+	SETsMu.RUnlock()
 
 	return Value{typ: "array", array: values}
 }
