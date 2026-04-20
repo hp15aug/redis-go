@@ -5,15 +5,16 @@ import (
 )
 
 var Handlers = map[string]func([]Value) Value{
-	"PING":    ping,
-	"BURN":    burn,
-	"SET":     set,
-	"GET":     get,
-	"HSET":    hset,
-	"HGET":    hget,
-	"HGETALL": hgetall,
-	"DEL":     del,
-	"GETALL":  getAll,
+	"PING":      ping,
+	"BURN":      burn,
+	"SET":       set,
+	"GET":       get,
+	"HSET":      hset,
+	"HGET":      hget,
+	"HGETALL":   hgetall,
+	"DEL":       del,
+	"GETALL":    getAll,
+	"DELETEALL": delAll,
 }
 
 func burn(args []Value) Value {
@@ -135,7 +136,7 @@ func hgetall(args []Value) Value {
 }
 
 func del(args []Value) Value {
-	if len(args) != -1 {
+	if len(args) != 1 {
 		return Value{typ: "error", str: "Error wrong number of arguments for 'del' operation"}
 	}
 
@@ -168,4 +169,19 @@ func getAll(args []Value) Value {
 	SETsMu.RUnlock()
 
 	return Value{typ: "array", array: values}
+}
+
+func delAll(args []Value) Value {
+	if len(args) != 0 {
+		return Value{typ: "error", str: "Error wrong number of arguments for 'delall' cmd"}
+	}
+
+	SETsMu.Lock()
+	SETs = map[string]string{}
+	SETsMu.Unlock()
+
+	HSETsMu.Lock()
+	HSETs = map[string]map[string]string{}
+	HSETsMu.Unlock()
+	return Value{typ: "string", str: "DELETED ALL SUCCESSFULLY"}
 }

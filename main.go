@@ -73,7 +73,7 @@ func main() {
 			continue
 		}
 
-		if command == "SET" || command == "HSET" || command == "DEL" {
+		if command == "SET" || command == "HSET" || command == "DEL" || command == "DELALL" {
 			aof.Write(value)
 		}
 
