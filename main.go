@@ -10,6 +10,8 @@ import (
 func main() {
 	fmt.Println("Listening on port :6379")
 
+	go StartWSServer()
+
 	l, err := net.Listen("tcp", ":6379")
 	if err != nil {
 		fmt.Println(err)
@@ -44,6 +46,8 @@ func main() {
 			EXPIRESMu.Lock()
 			SETsMu.Lock()
 
+			didDelete := false
+
 			for key, expireTime := range EXPIRES {
 				if time.Now().After(expireTime) {
 					delete(SETs, key)
@@ -53,6 +57,10 @@ func main() {
 
 			SETsMu.Unlock()
 			EXPIRESMu.Unlock()
+
+			if didDelete {
+				BroadcastState()
+			}
 		}
 	}()
 

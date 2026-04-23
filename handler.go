@@ -22,6 +22,8 @@ func isExpired(key string) bool {
 		EXPIRESMu.Lock()
 		delete(EXPIRES, key)
 		EXPIRESMu.Unlock()
+
+		defer BroadcastState()
 		return true
 	}
 
@@ -43,6 +45,8 @@ var Handlers = map[string]func([]Value) Value{
 }
 
 func setex(args []Value) Value {
+	defer BroadcastState()
+
 	if len(args) != 3 {
 		return Value{typ: "error", str: "Error wrong number of arguments for 'setex' cmd"}
 	}
@@ -86,6 +90,8 @@ var SETs = map[string]string{}
 var SETsMu = sync.RWMutex{}
 
 func set(args []Value) Value {
+	defer BroadcastState()
+
 	if len(args) != 2 {
 		return Value{typ: "error", str: "Error wrong number of arguments for 'set' cmd"}
 	}
@@ -126,6 +132,8 @@ var HSETs = map[string]map[string]string{}
 var HSETsMu = sync.RWMutex{}
 
 func hset(args []Value) Value {
+	defer BroadcastState()
+
 	if len(args) != 3 {
 		return Value{typ: "error", str: "Error wrong number of arguments for 'hset' cmd"}
 	}
@@ -190,6 +198,8 @@ func hgetall(args []Value) Value {
 }
 
 func del(args []Value) Value {
+	defer BroadcastState()
+
 	if len(args) != 1 {
 		return Value{typ: "error", str: "Error wrong number of arguments for 'del' operation"}
 	}
@@ -230,6 +240,8 @@ func getAll(args []Value) Value {
 }
 
 func delAll(args []Value) Value {
+	defer BroadcastState()
+
 	if len(args) != 0 {
 		return Value{typ: "error", str: "Error wrong number of arguments for 'delall' cmd"}
 	}
