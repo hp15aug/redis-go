@@ -1,8 +1,32 @@
 package main
 
 import (
+	"strconv"
 	"sync"
+	"time"
 )
+
+var EXPIRES = map[string]time.Time{}
+var EXPIRESMu = sync.RWMutex{}
+
+func isExpired(key string) bool {
+	EXPIRESMu.RLock()
+	expireTime, hashExpiration := EXPIRES[key]
+	EXPIRESMu.RUnlock()
+
+	if hashExpiration && time.Now().After(expireTime) {
+		SETsMu.Lock()
+		delete(SETs, key)
+		SETsMu.Unlock()
+
+		EXPIRESMu.Lock()
+		delete(EXPIRES, key)
+		EXPIRESMu.Unlock()
+		return true
+	}
+
+	return false
+}
 
 var Handlers = map[string]func([]Value) Value{
 	"PING":      ping,
@@ -15,6 +39,32 @@ var Handlers = map[string]func([]Value) Value{
 	"DEL":       del,
 	"GETALL":    getAll,
 	"DELETEALL": delAll,
+	"SETEX":     setex,
+}
+
+func setex(args []Value) Value {
+	if len(args) != 3 {
+		return Value{typ: "error", str: "Error wrong number of arguments for 'setex' cmd"}
+	}
+
+	key := args[0].bulk
+	secondsStr := args[1].bulk
+	value := args[2].bulk
+
+	seconds, err := strconv.Atoi(secondsStr)
+	if err != nil {
+		return Value{typ: "error", str: "Error invalid expire time in 'setex'"}
+	}
+
+	SETsMu.Lock()
+	SETs[key] = value
+	SETsMu.Unlock()
+
+	EXPIRESMu.Lock()
+	EXPIRES[key] = time.Now().Add(time.Duration(seconds) * time.Second)
+	EXPIRESMu.Unlock()
+
+	return Value{typ: "string", str: "OK"}
 }
 
 func burn(args []Value) Value {
@@ -56,6 +106,10 @@ func get(args []Value) Value {
 	}
 
 	key := args[0].bulk
+
+	if isExpired(key) {
+		return Value{typ: "null"}
+	}
 
 	SETsMu.RLock()
 	value, ok := SETs[key]
@@ -149,6 +203,10 @@ func del(args []Value) Value {
 	}
 	SETsMu.Unlock()
 
+	EXPIRESMu.Lock()
+	delete(EXPIRES, key)
+	EXPIRESMu.Unlock()
+
 	if exists {
 		return Value{typ: "string", str: "DELETED"}
 	}
@@ -183,5 +241,10 @@ func delAll(args []Value) Value {
 	HSETsMu.Lock()
 	HSETs = map[string]map[string]string{}
 	HSETsMu.Unlock()
+
+	EXPIRESMu.Lock()
+	EXPIRES = map[string]time.Time{}
+	EXPIRESMu.Unlock()
+
 	return Value{typ: "string", str: "DELETED ALL SUCCESSFULLY"}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -35,6 +36,25 @@ func main() {
 
 		handler(args)
 	})
+
+	go func() {
+		for {
+			time.Sleep(2 * time.Second)
+
+			EXPIRESMu.Lock()
+			SETsMu.Lock()
+
+			for key, expireTime := range EXPIRES {
+				if time.Now().After(expireTime) {
+					delete(SETs, key)
+					delete(EXPIRES, key)
+				}
+			}
+
+			SETsMu.Unlock()
+			EXPIRESMu.Unlock()
+		}
+	}()
 
 	conn, err := l.Accept()
 	if err != nil {
@@ -73,7 +93,7 @@ func main() {
 			continue
 		}
 
-		if command == "SET" || command == "HSET" || command == "DEL" || command == "DELALL" {
+		if command == "SET" || command == "HSET" || command == "DEL" || command == "DELALL" || command == "SETEX" {
 			aof.Write(value)
 		}
 
