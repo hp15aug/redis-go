@@ -64,11 +64,18 @@ func main() {
 		}
 	}()
 
-	conn, err := l.Accept()
-	if err != nil {
-		fmt.Println(err)
-		return
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		go handleConnection(conn, aof)
 	}
+}
+
+func handleConnection(conn net.Conn, aof *Aof) {
 	defer conn.Close()
 
 	for {
